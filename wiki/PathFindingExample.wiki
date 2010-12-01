@@ -1,4 +1,4 @@
-#summary A quick start example of how to calculate the field of vision.
+#summary A quick start example of how to do path-finding.
 
 = Path Finding =
 
