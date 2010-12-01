@@ -2,7 +2,7 @@
 
 = Path Finding =
 
-You can find the below code in the source file straightedge.test.PathTest
+You can find the below code in the source file !straightedge.test.PathTest.
 
 {{{
 import straightedge.geom.*;
