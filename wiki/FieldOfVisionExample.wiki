@@ -2,7 +2,7 @@
 
 = Field Of Vision =
 
-You can find the below code in the source file straightedge.test.VisionTest;
+You can find the below code in the source file straightedge.test.VisionTest.java
 
 {{{
 import straightedge.geom.*;
