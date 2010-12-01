@@ -1,12 +1,12 @@
 #summary A quick start example of how to calculate the field of vision.
 
-= Field Of Vision =
+= Path Finding =
 
-You can find the below code in the source file straightedge.test.VisionTest;
+You can find the below code in the source file straightedge.test.PathTest;
 
 {{{
 import straightedge.geom.*;
-import straightedge.geom.vision.*;
+import straightedge.geom.path.*;
 import java.util.*;
 import java.awt.geom.*;
 import java.awt.event.*;
@@ -14,8 +14,8 @@ import javax.swing.*;
 import java.awt.*;
 
 /**
- * A simple demo of field-of-vision calculation.
- *
+ * A simple demo of path-finding.
+ * 
  * Note that this uses passive rendering, meaning that
  * all rendering is done on Swing's Event Dispatch Thread via the repaint() method.
  * This is different to active rendering where the rendering happens on a
@@ -23,70 +23,80 @@ import java.awt.*;
  *
  * @author Keith
  */
-public class VisionTest {
+public class PathTest {
 	JFrame frame;
 
-	VisionFinder visionFinder;
-	VisionData visionData = null;
-	double smallAmount = 0.0001;
+	ArrayList<PathBlockingObstacleImpl> stationaryObstacles;
+	NodeConnector nodeConnector;
+	float maxConnectionDistanceBetweenObstacles;
+	PathFinder pathFinder;
 
-	ArrayList<OccluderImpl> occluders;
+	Player player;
 	KPoint lastMouseMovePoint = new KPoint(100, 100);
 
-	public VisionTest(){
-		// Make the window
+	long lastSystemTimeNanos = System.nanoTime();
+
+	public PathTest(){
+		// Set up the window:
 		frame = new JFrame(this.getClass().getSimpleName());
 		frame.setSize(500, 500);
 		frame.setLocationRelativeTo(null);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-		// Make the occluders
-		occluders = new ArrayList<OccluderImpl>();
-		float pillarH = 20;
-		float pillarW = 5;
-		KPoint centerOfSpiral = new KPoint(250, 250);
-		int numPillars = 40;
-		double angleIncrement = Math.PI*2f/(numPillars);
-		float rBig = 150;
-		double currentAngle = 0;
-		for (int k = 0; k < numPillars; k++){
-			double x = rBig*Math.cos(currentAngle);
-			double y = rBig*Math.sin(currentAngle);
-			KPoint center = new KPoint((float)x, (float)y);
-			KPolygon poly = KPolygon.createRectOblique(0,0, pillarH,0, pillarW);
-			poly.rotate((float)currentAngle);
-			poly.translateTo(center);
-			poly.translate(centerOfSpiral);
-			occluders.add(new OccluderImpl(poly));
-			currentAngle += angleIncrement;
+		// Make the obstacles:
+		stationaryObstacles = new ArrayList<PathBlockingObstacleImpl>();
+		for (int i = 0; i < 4; i++){
+			for (int j = 0; j < 4; j++){
+				ArrayList<KPoint> pointList = new ArrayList<KPoint>();
+				int numPoints = 6;
+				double angleIncrement = Math.PI*2f/(numPoints*2);
+				float rBig = 50;
+				float rSmall = 20;
+				double currentAngle = 0;
+				for (int k = 0; k < numPoints; k++){
+					double x = rBig*Math.cos(currentAngle);
+					double y = rBig*Math.sin(currentAngle);
+					pointList.add(new KPoint((float)x, (float)y));
+					currentAngle += angleIncrement;
+					x = rSmall*Math.cos(currentAngle);
+					y = rSmall*Math.sin(currentAngle);
+					pointList.add(new KPoint((float)x, (float)y));
+					currentAngle += angleIncrement;
+				}
+				KPolygon poly = new KPolygon(pointList);
+				assert poly.isCounterClockWise();
+				poly.rotate(i+j);
+				poly.translate(100 + 100*i, 100 + 100*j);
+				stationaryObstacles.add(PathBlockingObstacleImpl.createObstacleFromInnerPolygon(poly));
+			}
 		}
 
-		// Make the field of vision polygon:
-		int numPoints = 20;
-		float radius = 250;
-		KPolygon boundaryPolygon = KPolygon.createRegularPolygon(numPoints, radius);
-		// Make the eye which is like the light-source
-		// By making the eye (or light source) slightly offset from (0,0), it will prevent problems caused by collinearity.
-		KPoint eye = new KPoint(smallAmount, smallAmount);
-		// The VisionData just contains the eye and boundary polygon,
-		// and also the results of the VisionFinder calculations.
-		visionData = new VisionData(eye, boundaryPolygon);
-		visionFinder = new VisionFinder();
+		// Connect the obstacles' nodes so that the PathFinder can do its work:
+		maxConnectionDistanceBetweenObstacles = 1000f;
+		nodeConnector = new NodeConnector();
+		for (int k = 0; k < stationaryObstacles.size(); k++){
+			nodeConnector.addObstacle(stationaryObstacles.get(k), stationaryObstacles, maxConnectionDistanceBetweenObstacles);
+		}
 
-		JComponent renderComponent = new JComponent(){
+		// Initialise the PathFinder
+		pathFinder = new PathFinder();
+		player = new Player();
+		player.pos = new KPoint(100, 100);
+		player.target = player.pos.copy();
+
+		final JComponent renderComponent = new JComponent(){
+			// This method is called every time the repaintThread does renderComponent.repaint().
 			public void paint(Graphics graphics){
-				// Move the eye and boundaryPolygon to wherever they need to be.
-				// By making the eye slightly offset from its integer coordinate by smallAmount,
-				// it will prevent problems caused by collinearity.
-				visionData.eye.setCoords(lastMouseMovePoint.x + smallAmount, lastMouseMovePoint.y + smallAmount);
-				visionData.boundaryPolygon.translateTo(visionData.eye);
-				visionFinder.calc(visionData, occluders);
-				/* Note that the above line is the slow way to calculate the visiblePolygon since the
-				 * intersection points of the stationary occluders will have to
-				 * be recalculated every single time calc is called.
-				 * See VisionTestActiveRendering for an example of how to do it more efficiently.
-				 */
+				// calculate the time since the last update.
+				long currentSystemTimeNanos = System.nanoTime();
+				double nanosInASecond = 1000000000;
+				double secondsElapsed = (currentSystemTimeNanos - lastSystemTimeNanos)/nanosInASecond;
+				lastSystemTimeNanos = currentSystemTimeNanos;
+				player.target = lastMouseMovePoint;
+				// re-calculate the players path and move him forward.
+				player.update(secondsElapsed);
 
+				// render the obstacles and player:
 				Graphics2D g = (Graphics2D)graphics;
 				g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
 				float backGroundGrey = 77f/255f;
@@ -96,29 +106,29 @@ public class VisionTest {
 				g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 				float g4 = 0.1f;
 				g.setColor(new Color(g4, g4, g4));
-				for (int i = 0; i < occluders.size(); i++) {
-					g.fill(occluders.get(i).getPolygon());
+				for (int i = 0; i < stationaryObstacles.size(); i++) {
+					g.fill(stationaryObstacles.get(i).getPolygon());
 				}
-
-				if (visionData.visiblePolygon != null){
-					Point2D.Double center = new Point2D.Double(visionData.eye.x, visionData.eye.y);
-					float[] dist = {0.0f, 1.0f};
-					float a = 0.9f;
-					float c = backGroundGrey;
-					Color[] colors = {new Color(a, a, a, 0.7f), new Color(c, c, c, 0.0f)};
-					RadialGradientPaint paint = new RadialGradientPaint(center, (float)visionData.maxEyeToBoundaryPolygonPointDist, dist, colors);//, CycleMethod.REFLECT);
-					g.setPaint(paint);
-					g.fill(visionData.visiblePolygon);
+				// render the player's path:
+				g.setColor(Color.LIGHT_GRAY);
+				if (player.pathPoints.size() > 0) {
+					KPoint currentPoint = player.pos;
+					for (int j = 0; j < player.pathPoints.size(); j++) {
+						KPoint nextPoint = player.pathPoints.get(j);
+						g.draw(new Line2D.Double(currentPoint.getX(), currentPoint.getY(), nextPoint.getX(), nextPoint.getY()));
+						float d = 5f;
+						g.fill(new Ellipse2D.Double(nextPoint.getX() - d / 2f, nextPoint.getY() - d / 2f, d, d));
+						currentPoint = nextPoint;
+					}
 				}
 
 				g.setColor(Color.RED);
-				float r = 1f;
-				g.fill(new Ellipse2D.Double(lastMouseMovePoint.x - r, lastMouseMovePoint.y - r, 2*r, 2*r));
+				double r = 5;
+				g.fill(new Ellipse2D.Double(player.pos.x - r, player.pos.y - r, 2*r, 2*r));
 			}
 		};
 
 		frame.add(renderComponent);
-
 		renderComponent.addMouseMotionListener(new MouseMotionAdapter(){
 			public void mouseMoved(MouseEvent e){
 				lastMouseMovePoint.x = e.getX();
@@ -128,22 +138,115 @@ public class VisionTest {
 		frame.setVisible(true);
 
 		// This thread calls repaint() in a never-ending loop to animate the renderComponent.
-		Thread thread = new Thread(){
+		Thread repaintThread = new Thread(){
 			public void run(){
 				while(true){
-					frame.getContentPane().repaint();
-					try{Thread.sleep(10);}catch(Exception e){}
+					renderComponent.repaint();
+					try{Thread.sleep(1);}catch(Exception e){}
 				}
 			}
 		};
-		thread.setDaemon(true);
-		thread.start();
+		repaintThread.setDaemon(true);
+		repaintThread.start();
 	}
 
+	public class Player{
+		KPoint pos;
+		KPoint target;
+		KPoint targetAdjusted;
+		float maxConnectionDistanceFromPlayerToObstacles;
+		ArrayList<KPoint> pathPoints;
+		float speed;
+		float speedX;
+		float speedY;
+		float moveAngle;
+		KPoint currentTargetPoint = null;
 
+		public Player(){
+			maxConnectionDistanceFromPlayerToObstacles = PathTest.this.maxConnectionDistanceBetweenObstacles;
+			pathPoints = new ArrayList<KPoint>();
+			speed = 200;
+		}
+		public void update(double seconds){
+			pos = getNearestPointOutsideOfObstacles(pos);
+			targetAdjusted = getNearestPointOutsideOfObstacles(target);
+			// This is where the PathFinder does its work:
+			pathFinder.calc(pos, targetAdjusted, maxConnectionDistanceFromPlayerToObstacles, nodeConnector, stationaryObstacles, pathPoints);
+
+			if (speed == 0){
+				return;
+			}
+			// Update the player's position as it travels from point to point along the path.
+			double secondsLeft = seconds;
+			for (int i = 0; i < pathPoints.size(); i++){
+				currentTargetPoint = pathPoints.get(i);
+				KPoint oldPos = new KPoint();
+				oldPos.x = pos.x;
+				oldPos.y = pos.y;
+				double distUntilTargetReached = KPoint.distance(currentTargetPoint.x, currentTargetPoint.y, pos.x, pos.y);
+				double timeUntilTargetReached = distUntilTargetReached/speed;
+				assert timeUntilTargetReached >= 0 : timeUntilTargetReached;
+				double xCoordToWorkOutAngle = currentTargetPoint.x - pos.x;
+				double yCoordToWorkOutAngle = currentTargetPoint.y - pos.y;
+				if (xCoordToWorkOutAngle != 0 || yCoordToWorkOutAngle != 0) {
+					double dirAngle = KPoint.findAngle(0, 0, xCoordToWorkOutAngle, yCoordToWorkOutAngle);//(float)Math.atan(yCoordToWorkOutAngle/xCoordToWorkOutAngle);
+					moveAngle = (float)dirAngle;
+					speedX = (float)Math.cos(moveAngle) * speed;
+					speedY = (float)Math.sin(moveAngle) * speed;
+				}else{
+					speedX = 0f;
+					speedY = 0f;
+				}
+				if (secondsLeft >= timeUntilTargetReached){
+					pos.x = currentTargetPoint.x;
+					pos.y = currentTargetPoint.y;
+					speedX = 0f;
+					speedY = 0f;
+					secondsLeft -= timeUntilTargetReached;
+					assert i == 0 : "i == "+i;
+					// remove the current node from the pathNodes list since we've now reached it
+					pathPoints.remove(i);
+					i--;
+				}else{
+					pos.x = (float)(oldPos.x + secondsLeft * speedX);
+					pos.y = (float)(oldPos.y + secondsLeft * speedY);
+					secondsLeft = 0;
+					break;
+				}
+			}
+		}
+
+		public KPoint getNearestPointOutsideOfObstacles(KPoint point){
+			// check that the target point isn't inside any obstacles.
+			// if so, move it.
+			KPoint movedPoint = point.copy();
+			boolean targetIsInsideObstacle = false;
+			int count = 0;
+			while (true){
+				for (PathBlockingObstacleImpl obst : stationaryObstacles){
+					if (obst.getOuterPolygon().contains(movedPoint)){
+						targetIsInsideObstacle = true;
+						KPolygon poly = obst.getOuterPolygon();
+						KPoint p = poly.getBoundaryPointClosestTo(movedPoint);
+						if (p != null){
+							movedPoint.x = p.x;
+							movedPoint.y = p.y;
+						}
+						assert point != null;
+					}
+				}
+				count++;
+				if (targetIsInsideObstacle == false || count >= 3){
+					break;
+				}
+			}
+			return movedPoint;
+		}
+	}
 
 	public static void main(String[] args){
-		new VisionTest();
+		new PathTest();
 	}
 }
+
 }}}
