@@ -1,0 +1,12 @@
+#summary How the path finding algorithm works
+
+== How it works: Path finding ==
+
+There's 2 major parts here:
+  # Making the 'navigation mesh' which is done in the straightedge.geom.path.NodeConnector class. This links the vertices of polygons together if they are straight-line reachable, to make a kind of mesh that the A* algorithm can work on.
+  # Using the [http://www.policyalmanac.org/games/aStarTutorial.htm A* algorithm] on the mesh to find the shortest path. This code is in the straightedge.geom.path.PathFinder class. 
+
+The major innovation of this project is in the construction of the navigation mesh by using a *shrunk polygon*.
+Every PathBlockingObstacle has a polygon. This is the outerPolygon. A PathBlockingObstacle also has a list of Nodes. There is one Node for every vertice of the outerPolygon. There is also an innerPolygon, which is a slightly shrunk version of the outerPolygon. The Java Topology Suite has an excellent method polygon.buffer(double value) which is used to do the shrinking. Each Node contains a list of other nodes that are straight-line reachable. Two nodes are straight line reachable if a straight line between them is not intersected by the innerPolygon of any PathBlockingObstacle. The NodeConnector is used to connect the Nodes together. A node on the corner of an obstacle is tested for links to other nodes on the same obstacle, and nodes on other obstacles. These links are calculated and stored once when NodeConnector.addObstacle(...) is called. This saves processor time so that the PathFinder doesn't need to always re-calculate the links. However, the start and end points still need to be linked to the obstacle nodes, so these are tested for links to all nearby obstacle nodes every single time PathFinder.calc(...) is called.
+
+Once all of these links are all calculated, there is a navigation mesh for the A* algorithm to work on which is done in the PathFinder.calc(...) method.
