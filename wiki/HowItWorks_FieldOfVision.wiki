@@ -1,7 +1,5 @@
 #summary How the field of vision / lighting algorithm works
 
-= The Algorithm =
-
 The heavy-lifting code is in the straightedge.geom.vision.VisionFinder class.
 This is how it works:
 
