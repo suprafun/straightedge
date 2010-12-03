@@ -5,6 +5,7 @@
 You can find the below code in the source file straightedge.test.VisionTest.java
 
 This is what the program should look like:
+
 [http://www.keithwoodward.com/straightedge/screenshotVisionTest.png]
 
 {{{
