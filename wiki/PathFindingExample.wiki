@@ -4,6 +4,10 @@
 
 You can find the below code in the source file straightedge.test.PathTest.java
 
+This is what the program should look like:
+
+[http://www.keithwoodward.com/straightedge/screenshotPathTest.png]
+
 {{{
 import straightedge.geom.*;
 import straightedge.geom.path.*;
