@@ -1,0 +1,17 @@
+#summary How the field of vision / lighting algorithm works
+
+= The Algorithm =
+
+The heavy-lifting code is in the straightedge.geom.vision.VisionFinder class.
+This is how it works:
+
+  # Make an empty list of points
+  # Add all polygon points that have an unobstructed line to the eye (or light source)
+  # Add all polygon intersection points that have an unobstructed line to the eye
+  # Add all points on the boundary polygon (or field of view) that have an unobstructed line to the eye
+  # Sort the list by the angle of each point relative to the eye, from the x-axis
+  # Search through the points and find any polygon points that are 'end points' which would cast a shadow.
+  # Cast a ray from these points away from the eye, and find the intersection of this ray with the nearest polygon or the nearest edge of the boundary polygon.
+  # Add the intersection to the list, before or after the 'end point' depending on which side the end point is on.
+
+It took a lot of trial and error to arrive at this method. I tried lots of other ways but they weren't stable. This one works fine so long as the eye is never collinear with any edges of the polygons. This can be enforced by making the eye unable to penetrate a slightly larger polygon, which is created using JTS's buffer method.
