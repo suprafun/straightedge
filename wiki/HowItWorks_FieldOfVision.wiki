@@ -1,6 +1,6 @@
 #summary How the field of vision / lighting algorithm works
 
-= How it works: Field of Vision / Lighting =
+== How it works: Field of Vision / Lighting ==
 
 The heavy-lifting code is in the straightedge.geom.vision.VisionFinder class.
 This is how it works:
