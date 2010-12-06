@@ -14,4 +14,6 @@ This is how it works:
   # Cast a ray from these points away from the eye, and find the intersection of this ray with the nearest polygon or the nearest edge of the boundary polygon.
   # Add the intersection to the list, before or after the 'end point' depending on which side the end point is on.
 
-It took a lot of trial and error to arrive at this method. I tried lots of other ways but they weren't stable. This one works fine so long as the eye is never collinear with any edges of the polygons. This can be enforced by making the eye unable to penetrate a slightly larger polygon, which is created using JTS's buffer method.
+It took a lot of trial and error to arrive at this method. I tried lots of other ways but they weren't stable. This method works fine except for the rare cases when the eye is collinear with 2 or more polygon vertices. To minimise this:
+  * the eye is prevented from penetrating a slightly larger polygon, which is created using JTS's buffer method. This prevents the eye from sitting on the edges of the polygon.
+  * if the eye position is controlled by the mouse, so its coordinates are always integer coordinates, its x and y coordinates are offset by a small amount (say 0.0001) which helps to prevent collinearity.
