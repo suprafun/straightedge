@@ -13,7 +13,7 @@ When connecting nodes I used to just connect all nodes that were reachable. By r
 
 This led to lots and lots of connections. The thing is that not all of these connections are actually useful for finding a path between obstacles. 
 
-By ignoring all of the useless connections, the nav-mesh is a lot smaller and faster to calculate, and the path finding algorithm works more quickly because there are less connections to process.
+I found an efficient way to determine if a connection is useful or not. By ignoring useless connections, the nav-mesh is a lot smaller and faster to calculate, and the path finding algorithm works more quickly because there are less connections to process. On the demo maps, there was a decrease of between 80 to 95% in the number of connections.
 
 To see the impact, look at these before and after screenshots:
 
