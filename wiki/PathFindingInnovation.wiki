@@ -17,17 +17,23 @@ By ignoring all of the useless connections, the nav-mesh is a lot smaller and fa
 
 To see the impact, look at these before and after screenshots:
 
+Before, with 26,444 node connections
 [http://www.keithwoodward.com/straightedge/screenshotProgressLetters26444.png]
 
+After, with only 1,735 node connections
 [http://www.keithwoodward.com/straightedge/screenshotProgressLetters1735.png]
 
+Before, with 15,577 node connections
 [http://www.keithwoodward.com/straightedge/screenshotProgressStarField15577.png]
 
+After, with only 3,024 node connections
 [http://www.keithwoodward.com/straightedge/screenshotProgressStarField3024.png]
 
-[http://www.keithwoodward.com/straightedge/screenshotProgressStoneHenge21888.png]
-
+Before, with 162,956 node connections
 [http://www.keithwoodward.com/straightedge/screenshotProgressStoneHenge162956.png]
+
+After, with only 21,888 node connections
+[http://www.keithwoodward.com/straightedge/screenshotProgressStoneHenge21888.png]
 
 Notice that the number of connections is drastically reduced. 
 
