@@ -7,7 +7,7 @@ Found a way to speed up NodeConnector.reconnectNode methods.
 
 = Details =
 
-This is just a draft.
+This is just a quick draft.
 
 When connecting nodes I used to just connect all nodes that were reachable. By reachable, I mean that a line from one node to another is not intersected by any obstacles. 
 
